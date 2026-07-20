@@ -1,6 +1,8 @@
 import os
 import warnings
 
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 # use this for now to filter out torch warnings
 warnings.filterwarnings(
     "ignore",
@@ -163,8 +165,8 @@ def load_model_and_tokenizer(path, model_name, device, config_params):
             torch_dtype=torch.float16,
             device_map="auto",
             max_memory={
-                0: "8GiB",      # Giữ lại 4GB VRAM cho KV Cache
-                "cpu": "20GiB"  # Dùng RAM máy tính thoải mái
+                0: "8GiB",       # Hạ tiếp xuống 8GB để đối phó với Activations siêu lớn
+                "cpu": "20GiB" 
             },
             low_cpu_mem_usage=True,
         )
@@ -252,10 +254,7 @@ if __name__ == '__main__':
         max_gen = dataset2maxlen[dataset]
         
         data_all = [data_sample for data_sample in data]
-        
-        # GIỚI HẠN CHẠY 50 MẪU ĐẦU TIÊN ĐỂ TEST NHANH (BỎ DÒNG NÀY NẾU MUỐN CHẠY FULL)
-   
-        
+                
         for i in range(len(data_all)):
             data_all[i]['different_prefix_index'] = i
 
