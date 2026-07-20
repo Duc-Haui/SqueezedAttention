@@ -1,0 +1,94 @@
+Large Language Models (LLMs) have seen rapid advancements in recent years, enabling
+a range of downstream applications including Question Answering and analysis over
+structured and unstructured documents. Performance on these tasks has benefited
+from the increased context lengths of newer open-source and closed-source models,
+as these tasks benefit from incorporating a large amount of input context in order
+to condition the model to generate particular outputs. However, deployment of LLMs
+for downstream applications is constrained by inference costs, with LLM inference
+requiring significant computational resources as well as memory capacity and bandwidth.
+
+In particular, long context-length applications have large memory capacity and memory
+bandwidth requirements due to the size of the KV cache, which increases linearly with
+respect to sequence length. For many applications such as in-context learning,
+document QA, and code generation, over a series of prompts a large portion of the
+input context is fixed. This fixed context, which may contain system instructions,
+documentation, or few-shot examples, is extremely beneficial for tailoring the model
+to the target application. However, increasing the length of the fixed context poses
+a significant challenge for inference efficiency.
+
+We propose Squeezed Attention as a method to accelerate fixed context applications
+by accelerating the attention computation. Our method accelerates inference by quickly
+identifying which keys in the fixed context are important for a given query token.
+Offline prior to inference, we cluster the keys in the fixed context based on their
+semantic similarity and then represent keys from the same cluster using a single
+representative key centroid. At inference time, when the user input is received, we
+retrieve the important keys by first comparing the query tokens with the key centroids,
+rather than the entire set of keys, in order to identify the important key clusters
+for the current query. Once the important clusters are identified, we retrieve their
+associated keys and compute exact attention only with those high-scoring keys.
+
+Our method can be further extended to a hierarchical clustering and retrieval scheme,
+efficiently narrowing the search space by first leveraging coarser-grained clusters
+and then refining the search using fine-grained clusters. In contrast to existing
+solutions that identify less important tokens once and discard them throughout the
+entire generation, our method dynamically identifies and retrieves only the information
+that is semantically relevant to each generation step. This allows our method to
+preserve generation quality while reducing the number of KV cache entries loaded from
+memory by up to 8 times, including loading key centroids.
+
+The semantic-based key clustering and retrieval works as follows: to cluster
+non-consecutive keys by their semantic similarity, we perform K-means clustering
+offline, representing all keys within each cluster with a single key centroid value.
+This allows us to identify semantically relevant keys for the query tokens during
+inference by comparing the query against key clusters instead of the entire key set,
+and only performing exact attention computation with the most relevant keys. Since
+the number of key centroids is significantly smaller than the number of keys, the
+memory overhead remains minimal. We additionally propose a hierarchical version of
+our method, which can reduce the memory and computational complexity of the centroid
+lookup from linear to logarithmic with respect to the fixed context length.
+
+For our system implementation, we design efficient Triton kernels for performing the
+centroid comparison and computing sparse FlashAttention with only the important keys.
+Combined together, our method results in 4.3x and 4.2x speedups during the prefill
+and decode phases when running inference with long fixed context. The kernel
+implementation builds on top of prior work on Triton implementations for FlashAttention-2
+and for dynamic sparse FlashAttention. The kernel uses a tensor containing key indices
+to identify which keys need to be loaded from memory for exact attention computation.
+
+We introduce PreFixQA, a document QA benchmark which contains a selection of arXiv
+documents, each with many synthetic user input question and answer pairs. This
+benchmark facilitates research into fixed context methods by allowing us to evaluate
+various user inputs for each document. The dataset curation pipeline involves
+collecting long documents from arXiv papers, and then collecting question-answer pairs
+based on each document using a multi-step generation and filtering procedure.
+
+We extensively evaluate our method on long-context benchmarks including LongBench,
+RULER, and PreFixQA. On LongBench, our method preserves accuracy with 3.1x KV budget
+reduction and achieves up to 8x KV budget reduction with 0.5 point accuracy degradation
+for the LLaMA-2-7B-32K, LWM-Text-Chat-1M, and Longchat-7B-v1.5-32K models. The results
+show that our method provides similar accuracy to the full KV cache baseline on long
+context-length tasks, while offering significant efficiency improvement in terms of
+reduction in KV cache loading and attention computation.
+
+Furthermore, our method outperforms the QUEST baseline, with a pronounced accuracy gap
+of up to 1 point for more aggressive sparsity settings. This highlights the advantage
+of semantic-based clustering for identifying and retaining important keys. We also
+include results for our hierarchical lookup approach, demonstrating how our hierarchical
+method has lower overhead from the centroid lookup with minor accuracy loss relative
+to performing a single-level lookup.
+
+The QUEST baseline clusters consecutive KV cache entries and dynamically retrieves the
+most relevant clusters based on their relevance to each query token during generation.
+However, this approach relies on physical proximity for clustering, whereas clustering
+should instead be based on semantic proximity, as tokens that are physically far apart
+can be semantically similar. Squeezed Attention addresses this by clustering tokens
+based on embedding similarity, ensuring that semantically relevant tokens are retrieved
+for future generations.
+
+In contrast with prior works which leverage vector search methods, Squeezed Attention
+uses a fast centroid lookup to enable accurate retrieval of relevant contexts on the
+GPU without requiring offloading operations to CPUs. Our approach is also able to
+accelerate both prefill and generation phases. Furthermore, our method allows for
+loading more or fewer keys from different heads, depending on the number of important
+keys for each head. This approach enables us to achieve higher accuracy while
+aggressively reducing the number of KV entries.
