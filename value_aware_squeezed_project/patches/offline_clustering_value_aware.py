@@ -6,10 +6,15 @@ So với offline_clustering.py gốc:
 2. Lưu thêm value_centroids và normalized_variance
 3. Thêm CLI args: --alpha, --beta, --gamma
 
-Cách dùng:
-    Copy file này vào root của repo SqueezedAttention (cùng cấp với offline_clustering.py gốc)
-    rồi chạy:
+GIỮ NGUYÊN tất cả kỹ thuật offloading VRAM từ file gốc:
+- Hook offload QKV sang CPU ngay lập tức
+- Clustering chạy trên CPU
+- del input_ids + torch.cuda.empty_cache() sau mỗi sample
+- output_attentions=False
+- sdpa attention backend
+- Tên file output tương thích pred.py
 
+Cách dùng:
     python offline_clustering_value_aware.py LLaMA-2-7B-32K \\
         --dataset 2wikimqa \\
         --output_path /tmp/clusters/2wikimqa/ \\
@@ -36,7 +41,6 @@ from utils.model_parse import parse_model, get_layers
 from squeezedattention.utils import build_chat, truncate_fn
 
 # Value-aware extension - đảm bảo `value_aware` package nằm trên PYTHONPATH
-# hoặc cùng thư mục
 from value_aware.clustering import run_value_aware_clustering
 from value_aware.threshold import run_value_aware_global_threshold
 
@@ -88,15 +92,21 @@ def main():
     print(f"Output: {args.output_path}")
     print()
 
-    # Load model
+    # ─── Load model (GIỮ NGUYÊN config từ file gốc) ─────────────────────────
     tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
     config = LlamaConfig.from_pretrained(model_path)
     config.return_qkv_states = True
-    config._flash_attn_2_enabled = True
-    config._attn_implementation = "flash_attention_2"
+    config._flash_attn_2_enabled = False    # ← giống file gốc (sdpa tiết kiệm VRAM hơn)
+    config._attn_implementation = "sdpa"    # ← giống file gốc
     model = LlamaForCausalLM.from_pretrained(
-        model_path, config=config, torch_dtype=torch.bfloat16
-    ).to(DEV).eval()
+        model_path,
+        config=config,
+        torch_dtype=torch.float16,          # ← giống file gốc (float16, không phải bfloat16)
+        device_map={"": DEV},               # ← giống file gốc (device_map thay vì .to(DEV))
+        trust_remote_code=True,
+        attn_implementation="sdpa"          # Ép buộc dùng chuẩn SDPA để vô hiệu hóa FlashAttention2
+    )
+    model.eval()
 
     model_type = parse_model(model)
     layers = get_layers(model, model_type)
@@ -125,7 +135,7 @@ def main():
         shared_prefix_length[i] = sp_len
         assert sp_len > 0
 
-    # Hooks để collect K, V, Q
+    # ─── Hooks để collect K, V, Q (OFFLOAD SANG CPU NGAY) ────────────────────
     all_queries_layers = []
     all_keys_layers = []
     all_values_layers = []
@@ -134,9 +144,12 @@ def main():
         _, qkv, _ = out
         queries, keys, values = qkv
         sp_len = shared_prefix_length[dataidx]
-        queries = queries[:, :, :sp_len]
-        keys = keys[:, :, :sp_len]
-        values = values[:, :, :sp_len]
+
+        # [QUAN TRỌNG] Offload sang CPU ngay lập tức — giống file gốc
+        queries = queries[:, :, :sp_len].cpu()
+        keys = keys[:, :, :sp_len].cpu()
+        values = values[:, :, :sp_len].cpu()
+
         all_queries_layers.append(queries)
         all_keys_layers.append(keys)
         all_values_layers.append(values)
@@ -146,7 +159,7 @@ def main():
 
     os.makedirs(args.output_path, exist_ok=True)
 
-    # Loop qua samples
+    # ─── Loop qua samples ────────────────────────────────────────────────────
     for dataidx, d in enumerate(tqdm(data_all)):
         all_queries_layers.clear()
         all_keys_layers.clear()
@@ -159,23 +172,59 @@ def main():
         )
         input_ids = tokenizer(prompt, truncation=False, return_tensors="pt").input_ids.to(DEV)
 
-        # Forward pass
+        print(f"dataidx: {dataidx} | length of input_ids: {len(input_ids[0])}")
+        print(f"dataidx: {dataidx} | shared_prefix_length: {shared_prefix_length[dataidx]}")
+
+        # Forward pass — GIỮ NGUYÊN setting từ file gốc
         with torch.no_grad():
-            _ = model.generate(
+            generated_ids = model.generate(
                 input_ids,
                 do_sample=False,
                 max_new_tokens=1,
-                use_cache=False,
-                output_attentions=True,
+                use_cache=False,            # ← giống file gốc (tiết kiệm VRAM)
+                output_attentions=False,     # ← giống file gốc (False, không phải True)
             )
+
+        # [QUAN TRỌNG] Free VRAM ngay sau hook capture — giống file gốc
+        del generated_ids, input_ids
+        torch.cuda.empty_cache()
 
         # Số centroid
         sp_len = shared_prefix_length[dataidx]
-        N_to_cluster = sp_len - args.observation_window
-        num_clusters = max(1, int(args.percent_clusters / 100.0 * N_to_cluster))
+        percentage = ((args.percent_clusters * 1.0) / 100.0)
+        num_clusters = int(percentage * (sp_len - args.observation_window))
+        if num_clusters < 1:
+            num_clusters = 1
+        print(num_clusters)
+
+        # ─── Báo cáo bộ nhớ (giống file gốc) ────────────────────────────────
+        tokens_kept = args.observation_window + num_clusters
+        kv_budget_percent = (tokens_kept / sp_len) * 100
+
+        print("\n" + "=" * 50)
+        print(f" BÁO CÁO NHANH - MẪU DỮ LIỆU {dataidx}")
+        print(f"  - Tổng chiều dài ngữ cảnh gốc : {sp_len} tokens")
+        print(f"  - Số tokens giữ lại (KV Cache) : {tokens_kept} tokens")
+        print(f"  --> KV Budget sử dụng         : {kv_budget_percent:.2f}% (Nén được {100 - kv_budget_percent:.2f}%)")
+
+        try:
+            import psutil
+            ram_used_gb = psutil.Process(os.getpid()).memory_info().rss / (1024 ** 3)
+            print(f" TIÊU THỤ BỘ NHỚ:")
+            print(f"  - System RAM (CPU) đang dùng   : {ram_used_gb:.2f} GB")
+        except ImportError:
+            pass
+
+        torch.cuda.empty_cache()
+        vram_allocated_gb = torch.cuda.memory_allocated(DEV) / (1024 ** 3)
+        vram_peak_gb = torch.cuda.max_memory_allocated(DEV) / (1024 ** 3)
+        print(f"  - GPU VRAM đang dùng (Hiện tại): {vram_allocated_gb:.2f} GB")
+        print(f"  - GPU VRAM Đỉnh (Peak)         : {vram_peak_gb:.2f} GB")
+        print("=" * 50 + "\n")
 
         t0 = time.time()
-        # === Value-Aware Clustering ===
+
+        # ═══ VALUE-AWARE CLUSTERING (chạy trên CPU — giống file gốc) ═════════
         kc_dict, vc_dict, lbl_dict, vvar_dict, nvar_dict = run_value_aware_clustering(
             all_keys_layers,
             all_values_layers,
@@ -185,10 +234,10 @@ def main():
             beta=args.beta,
             num_iters=args.kmeans_iters,
             print_log=False,
-            device=DEV,
+            device=torch.device('cpu'),     # ← CHẠY TRÊN CPU — tránh tràn VRAM
         )
 
-        # === Value-Aware Global Threshold ===
+        # ═══ VALUE-AWARE GLOBAL THRESHOLD (chạy trên CPU) ════════════════════
         global_threshold_dict = run_value_aware_global_threshold(
             keys_layers=all_keys_layers,
             queries_layers=all_queries_layers,
@@ -198,11 +247,13 @@ def main():
             num_clusters=num_clusters,
             observation_window=args.observation_window,
             gamma=args.gamma,
-            device=DEV,
+            device=torch.device('cpu'),     # ← CHẠY TRÊN CPU
         )
         clustering_time = time.time() - t0
 
-        # Save (CPU)
+        # ─── Save kết quả (CPU) ──────────────────────────────────────────────
+        # TÊN FILE PHẢI TƯƠNG THÍCH VỚI pred.py CỦA REPO GỐC
+        os.makedirs(args.output_path, exist_ok=True)
         for k in kc_dict:
             kc_dict[k] = kc_dict[k].cpu()
             vc_dict[k] = vc_dict[k].cpu()
@@ -210,15 +261,17 @@ def main():
             vvar_dict[k] = vvar_dict[k].cpu()
             nvar_dict[k] = nvar_dict[k].cpu()
 
-        prefix = f"{args.output_path}/sample_{dataidx}_clusters_{num_clusters}"
-        torch.save(kc_dict, f"{prefix}_key_centroids.pt")
-        torch.save(vc_dict, f"{prefix}_value_centroids.pt")
-        torch.save(lbl_dict, f"{prefix}_labels.pt")
-        torch.save(vvar_dict, f"{prefix}_value_variance.pt")
-        torch.save(nvar_dict, f"{prefix}_normalized_variance.pt")
-        torch.save(global_threshold_dict, f"{prefix}_thresholds.pt")
+        # File chính — tên giống hệt file gốc để pred.py đọc được
+        torch.save(kc_dict, f'{args.output_path}/centroids_tensor_dict_{dataidx}_{num_clusters}.pt')
+        torch.save(lbl_dict, f'{args.output_path}/centroids_labels_dict_{dataidx}_{num_clusters}.pt')
+        torch.save(global_threshold_dict, f'{args.output_path}/global_threshold_{dataidx}_{num_clusters}.pt')
 
-        # Cleanup
+        # File bổ sung — value-aware specific (pred.py gốc bỏ qua, dùng cho online VA)
+        torch.save(vc_dict, f'{args.output_path}/value_centroids_{dataidx}_{num_clusters}.pt')
+        torch.save(vvar_dict, f'{args.output_path}/value_variance_{dataidx}_{num_clusters}.pt')
+        torch.save(nvar_dict, f'{args.output_path}/normalized_variance_{dataidx}_{num_clusters}.pt')
+
+        # ─── Cleanup ─────────────────────────────────────────────────────────
         n_layers = len(all_keys_layers)
         for _ in range(n_layers):
             del all_queries_layers[0]
