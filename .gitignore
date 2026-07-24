@@ -5,6 +5,7 @@ __pycache__/
 Clusters-GPU/
 debug-cluster/
 Clusters-VA/
+Clusters-VA2/
 # C extensions
 *.so
 

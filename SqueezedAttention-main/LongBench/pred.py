@@ -254,7 +254,6 @@ if __name__ == '__main__':
         max_gen = dataset2maxlen[dataset]
         
         data_all = [data_sample for data_sample in data]
-                
         for i in range(len(data_all)):
             data_all[i]['different_prefix_index'] = i
 

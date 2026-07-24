@@ -23,18 +23,18 @@ PYTHON="/home/mtahackathon/anaconda3/envs/sq310/bin/python"
 
 # ─── CẤU HÌNH ────────────────────────────────────────────────────────────────
 MODEL_NAME="LLaMA-2-7B-32K"
-DATASETS=("narrativeqa")
+DATASETS=("qasper")
 PERC_CLUSTERS=5
-PERCENTILES=("0.70" "0.80" "0.90")
+PERCENTILES=("0.70")
 OBS_WINDOW=100
 
 # Value-Aware params
 ALPHA=1.0       # Trọng số K trong joint K-V clustering
-BETA=0.2        # Trọng số V (0 = tắt value-aware, về baseline gốc)
-GAMMA=0.05       # Hệ số boost variance khi tính threshold
+BETA=0.05        # Trọng số V (0 = tắt value-aware, về baseline gốc)
+GAMMA=0.01       # Hệ số boost variance khi tính threshold
 
 # Output path cho clusters VA
-PATH_TO_CLUSTERS_VA="${REPO}/Clusters-VA/"
+PATH_TO_CLUSTERS_VA="${REPO}/Clusters-VA2/"
 
 echo "========================================================="
 echo "  PIPELINE VALUE-AWARE SQUEEZED ATTENTION"

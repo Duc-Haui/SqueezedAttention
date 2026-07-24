@@ -1,0 +1,15 @@
+=== KẾT QUẢ TUNE THAM SỐ CHO narrativeqa (PC=5) ===
+Ngày chạy: Thu Jul 23 12:40:24 AM +07 2026
+----------------------------------------------------
+BETA=0.0 | GAMMA=0.0 ---> Evaluating on: []
+BETA=0.0 | GAMMA=0.01 ---> Evaluating on: ['result.json']
+BETA=0.0 | GAMMA=0.05 ---> Evaluating on: ['result.json']
+BETA=0.0 | GAMMA=0.1 ---> Evaluating on: ['result.json']
+BETA=0.0 | GAMMA=0.15 ---> Evaluating on: ['result.json']
+BETA=0.01 | GAMMA=0.0 ---> Evaluating on: ['result.json']
+BETA=0.01 | GAMMA=0.01 ---> Evaluating on: ['result.json']
+BETA=0.01 | GAMMA=0.05 ---> Evaluating on: ['result.json']
+BETA=0.01 | GAMMA=0.1 ---> Evaluating on: ['result.json']
+BETA=0.01 | GAMMA=0.15 ---> Evaluating on: ['result.json']
+BETA=0.05 | GAMMA=0.0 ---> Evaluating on: ['result.json']
+BETA=0.05 | GAMMA=0.01 ---> Evaluating on: ['result.json']
