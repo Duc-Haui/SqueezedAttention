@@ -1,0 +1,90 @@
+% === Yêu cầu package trong preamble ===
+% \usepackage{pgfplots}
+% \pgfplotsset{compat=1.18}
+% \usepgfplotslibrary{groupplots}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={
+        group size=3 by 1,
+        horizontal sep=1.5cm,
+    },
+    width=4.8cm,
+    height=5cm,
+    ybar,
+    bar width=8pt,
+    ymin=0,
+    enlarge x limits=0.2,
+    ylabel style={font=\small},
+    xlabel style={font=\small},
+    tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, at={(0.02,0.98)}, anchor=north west},
+    nodes near coords,
+    every node near coord/.append style={font=\tiny, rotate=90, anchor=west},
+    grid=major,
+    grid style={dashed, gray!30},
+    symbolic x coords={Baseline, 70\%, 80\%, 90\%},
+    xtick=data,
+    xlabel={Compression Rate},
+]
+
+\nextgroupplot[
+    title={NarrativeQA},
+    ylabel={F1 Score},
+    ymax=22.5,
+]
+\addplot[fill=blue!60, draw=black] coordinates {
+    (Baseline, 18.03)
+    (70\%, 17.81)
+    (80\%, 17.51)
+    (90\%, 15.87)
+};
+\addplot[fill=red!60, draw=black, postaction={pattern=north east lines}] coordinates {
+    (Baseline, 18.03)
+    (70\%, 16.63)
+    (80\%, 17.68)
+    (90\%, 15.24)
+};
+\legend{Squeezed Attn, Value-Aware (Ours)}
+
+\nextgroupplot[
+    title={Qasper},
+    ymax=38.5,
+]
+\addplot[fill=blue!60, draw=black, forget plot] coordinates {
+    (Baseline, 10.30)
+    (70\%, 11.45)
+    (80\%, 11.33)
+    (90\%, 11.07)
+};
+\addplot[fill=red!60, draw=black, postaction={pattern=north east lines}, forget plot] coordinates {
+    (Baseline, 10.30)
+    (70\%, 30.77)
+    (80\%, 30.65)
+    (90\%, 30.64)
+};
+
+\nextgroupplot[
+    title={MultifieldQA},
+    ymax=42.5,
+]
+\addplot[fill=blue!60, draw=black, forget plot] coordinates {
+    (Baseline, 32.84)
+    (70\%, 32.20)
+    (80\%, 32.11)
+    (90\%, 32.59)
+};
+\addplot[fill=red!60, draw=black, postaction={pattern=north east lines}, forget plot] coordinates {
+    (Baseline, 32.84)
+    (70\%, 33.98)
+    (80\%, 30.97)
+    (90\%, 31.11)
+};
+
+\end{groupplot}
+\end{tikzpicture}
+\caption{Performance comparison between Squeezed Attention and Value-Aware Squeezed Attention across compression rates on LongBench Single-Document QA tasks.}
+\label{fig:results_chart}
+\end{figure}

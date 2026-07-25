@@ -1,0 +1,8 @@
+Config,Rate,NQA,Qspr,MFQA
+All KV (Baseline),100%,-,-,-
+Sq-70%,70%,-,-,-
+VA-Sq-70% (Ours),70%,-,-,-
+Sq-80%,80%,-,-,-
+VA-Sq-80% (Ours),80%,-,-,-
+Sq-90%,90%,-,-,-
+VA-Sq-90% (Ours),90%,-,-,-

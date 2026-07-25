@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\caption{Performance comparison on LongBench Single-Document QA tasks (F1 score). \textbf{Bold} indicates the best result per compression rate.}
+\label{tab:results}
+\begin{tabular}{llccc}
+\toprule
+ & & \multicolumn{3}{c}{\textbf{Single-Doc. QA}} \\
+\cmidrule(lr){3-5}
+\textbf{Method} & \textbf{Rate} & \textbf{NQA} & \textbf{Qspr} & \textbf{MFQA} \\
+\midrule
+All KV (Baseline) & 100\% & 18.03 & 10.30 & 32.84 \\
+\midrule
+Squeezed Attn & 70\% & \textbf{17.81} & 11.45 & 32.20 \\
+VA-Squeezed (Ours) & 70\% & 16.63 & \textbf{30.77} & \textbf{33.98} \\
+\midrule
+Squeezed Attn & 80\% & 17.51 & 11.33 & \textbf{32.11} \\
+VA-Squeezed (Ours) & 80\% & \textbf{17.68} & \textbf{30.65} & 30.97 \\
+\midrule
+Squeezed Attn & 90\% & \textbf{15.87} & 11.07 & \textbf{32.59} \\
+VA-Squeezed (Ours) & 90\% & 15.24 & \textbf{30.64} & 31.11 \\
+\bottomrule
+\end{tabular}
+\end{table}
