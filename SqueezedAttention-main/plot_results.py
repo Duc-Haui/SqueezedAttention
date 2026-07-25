@@ -300,10 +300,11 @@ color_bl = "#404040"
 fill_sq = "#92C5DE"    # Xanh nhạt cho fill
 fill_va = "#FDDBC7"    # Hồng nhạt cho fill
 
-fig, axes = plt.subplots(1, 3, figsize=(14, 4.5))
+chart_paths = []
+chart_pdfs = []
 
 for idx, metric in enumerate(metrics):
-    ax = axes[idx]
+    fig, ax = plt.subplots(figsize=(5, 4.5))
     short = metric_short[metric]
 
     bl_val = vf(baseline, metric)
@@ -311,7 +312,6 @@ for idx, metric in enumerate(metrics):
     va_vals = [vf(va_results[p], metric) for p in percs]
 
     # --- Vùng tô (shaded area) giữa 2 đường ---
-    # Fill giữa VA và Sq để nhấn mạnh sự khác biệt
     ax.fill_between(x_ticks, sq_vals, va_vals, alpha=0.12,
                     color=color_va, zorder=1)
 
@@ -339,7 +339,6 @@ for idx, metric in enumerate(metrics):
 
         # Squeezed Attn annotation
         if sv < vv:
-            # Sq ở dưới → ghi xuống dưới
             ax.annotate(f"{sv:.2f}", (x_ticks[i], sv),
                         textcoords="offset points", xytext=(0, -13),
                         ha="center", fontsize=7.5, fontweight="bold",
@@ -352,7 +351,6 @@ for idx, metric in enumerate(metrics):
 
         # Value-Aware annotation
         if vv > sv:
-            # VA ở trên → ghi lên trên
             ax.annotate(f"{vv:.2f}", (x_ticks[i], vv),
                         textcoords="offset points", xytext=(0, 9),
                         ha="center", fontsize=7.5, fontweight="bold",
@@ -365,8 +363,7 @@ for idx, metric in enumerate(metrics):
 
     # --- Trục & Style ---
     ax.set_xlabel("Compression Rate (%)", fontsize=11)
-    if idx == 0:
-        ax.set_ylabel("F1 Score", fontsize=11)
+    ax.set_ylabel("F1 Score", fontsize=11)
     ax.set_title(short, fontsize=13, fontweight="bold", pad=10)
     ax.set_xticks(x_ticks)
     ax.set_xticklabels(["70%", "80%", "90%"], fontsize=10)
@@ -380,7 +377,7 @@ for idx, metric in enumerate(metrics):
     ax.set_ylim(y_min_val - span * 0.30, y_max_val + span * 0.30)
 
     # X-axis padding để nhìn annotation baseline
-    ax.set_xlim(67, 96)
+    ax.set_xlim(67, 97)
 
     ax.grid(axis="both", linestyle="--", alpha=0.25, zorder=0)
     ax.set_axisbelow(True)
@@ -389,111 +386,102 @@ for idx, metric in enumerate(metrics):
     ax.spines["left"].set_linewidth(0.6)
     ax.spines["bottom"].set_linewidth(0.6)
 
-    # Legend chỉ ở subplot đầu tiên
-    if idx == 0:
-        ax.legend(loc="best", frameon=True, framealpha=0.95,
-                  edgecolor="#cccccc", fancybox=False, fontsize=8.5,
-                  handlelength=2.5)
+    # Legend cho mọi biểu đồ vì đã tách riêng
+    ax.legend(loc="best", frameon=True, framealpha=0.95,
+              edgecolor="#cccccc", fancybox=False, fontsize=8.5,
+              handlelength=2.5)
 
-plt.tight_layout(w_pad=3.0)
+    plt.tight_layout()
 
-chart_path = os.path.join(OUTPUT_DIR, "results_chart.png")
-fig.savefig(chart_path, dpi=300, bbox_inches="tight", facecolor="white")
-print(f"-> Chart image saved: {chart_path}")
+    chart_path = os.path.join(OUTPUT_DIR, f"results_chart_{metric}.png")
+    fig.savefig(chart_path, dpi=300, bbox_inches="tight", facecolor="white")
+    chart_paths.append(chart_path)
 
-chart_pdf = os.path.join(OUTPUT_DIR, "results_chart.pdf")
-fig.savefig(chart_pdf, bbox_inches="tight", facecolor="white")
-print(f"-> Chart PDF saved: {chart_pdf}")
+    chart_pdf = os.path.join(OUTPUT_DIR, f"results_chart_{metric}.pdf")
+    fig.savefig(chart_pdf, bbox_inches="tight", facecolor="white")
+    chart_pdfs.append(chart_pdf)
+    
+    plt.close(fig)
 
-plt.show()
+print(f"-> Generated {len(chart_paths)} individual charts (PNG/PDF).")
 
 # ============================================================
 # 5. TẠO MÃ LaTeX BIỂU ĐỒ (pgfplots - chèn thẳng vào Overleaf)
 # ============================================================
 metric_tex = {"narrativeqa": "NarrativeQA", "qasper": "Qasper", "multifieldqa_en": "MultifieldQA"}
 
-pgf_lines = []
-pgf_lines.append(r"% === Yêu cầu package trong preamble ===")
-pgf_lines.append(r"% \usepackage{pgfplots}")
-pgf_lines.append(r"% \pgfplotsset{compat=1.18}")
-pgf_lines.append(r"% \usepgfplotslibrary{groupplots}")
-pgf_lines.append("")
-pgf_lines.append(r"\begin{figure}[t]")
-pgf_lines.append(r"\centering")
-pgf_lines.append(r"\begin{tikzpicture}")
-pgf_lines.append(r"\begin{groupplot}[")
-pgf_lines.append(r"    group style={")
-pgf_lines.append(r"        group size=3 by 1,")
-pgf_lines.append(r"        horizontal sep=1.5cm,")
-pgf_lines.append(r"    },")
-pgf_lines.append(r"    width=4.8cm,")
-pgf_lines.append(r"    height=5cm,")
-pgf_lines.append(r"    ybar,")
-pgf_lines.append(r"    bar width=8pt,")
-pgf_lines.append(r"    ymin=0,")
-pgf_lines.append(r"    enlarge x limits=0.2,")
-pgf_lines.append(r"    ylabel style={font=\small},")
-pgf_lines.append(r"    xlabel style={font=\small},")
-pgf_lines.append(r"    tick label style={font=\footnotesize},")
-pgf_lines.append(r"    legend style={font=\footnotesize, at={(0.02,0.98)}, anchor=north west},")
-pgf_lines.append(r"    nodes near coords,")
-pgf_lines.append(r"    every node near coord/.append style={font=\tiny, rotate=90, anchor=west},")
-pgf_lines.append(r"    grid=major,")
-pgf_lines.append(r"    grid style={dashed, gray!30},")
-pgf_lines.append(r"    symbolic x coords={Baseline, 70\%, 80\%, 90\%},")
-pgf_lines.append(r"    xtick=data,")
-pgf_lines.append(r"    xlabel={Compression Rate},")
-pgf_lines.append(r"]")
+pgf_paths = []
 
 for idx, metric in enumerate(metrics):
+    pgf_lines = []
+    pgf_lines.append(r"% === Yêu cầu package trong preamble ===")
+    pgf_lines.append(r"% \usepackage{pgfplots}")
+    pgf_lines.append(r"% \usepackage{tikz}")
+    pgf_lines.append(r"% \pgfplotsset{compat=1.18}")
     pgf_lines.append("")
-    pgf_lines.append(r"\nextgroupplot[")
-    pgf_lines.append(f"    title={{{metric_tex[metric]}}},")
-    if idx == 0:
-        pgf_lines.append(r"    ylabel={F1 Score},")
+    pgf_lines.append(r"\begin{figure}[t]")
+    pgf_lines.append(r"\centering")
+    pgf_lines.append(r"\begin{tikzpicture}")
+    pgf_lines.append(r"\begin{axis}[")
+    pgf_lines.append(r"    width=6cm,")
+    pgf_lines.append(r"    height=5.5cm,")
+    pgf_lines.append(r"    title={" + metric_tex[metric] + r"},")
+    pgf_lines.append(r"    ylabel={F1 Score},")
+    pgf_lines.append(r"    xlabel={Compression Rate},")
+    pgf_lines.append(r"    enlarge x limits=0.1,")
+    pgf_lines.append(r"    ylabel style={font=\small},")
+    pgf_lines.append(r"    xlabel style={font=\small},")
+    pgf_lines.append(r"    tick label style={font=\footnotesize},")
+    pgf_lines.append(r"    legend style={font=\footnotesize, at={(0.98,0.98)}, anchor=north east},")
+    pgf_lines.append(r"    grid=major,")
+    pgf_lines.append(r"    grid style={dashed, gray!30},")
+    pgf_lines.append(r"    symbolic x coords={70\%, 80\%, 90\%},")
+    pgf_lines.append(r"    xtick=data,")
+    
     all_vals_m = [vf(baseline, metric)] + [vf(sq_results[p], metric) for p in percs] + [vf(va_results[p], metric) for p in percs]
     y_max_m = max(all_vals_m) if max(all_vals_m) > 0 else 1.0
-    pgf_lines.append(f"    ymax={y_max_m * 1.25:.1f},")
+    y_min_m = min(v for v in all_vals_m if v > 0)
+    span = y_max_m - y_min_m if y_max_m > y_min_m else 2.0
+    
+    pgf_lines.append(f"    ymin={max(0, y_min_m - span * 0.3):.1f},")
+    pgf_lines.append(f"    ymax={y_max_m + span * 0.3:.1f},")
     pgf_lines.append(r"]")
 
+    # Baseline (dashed line)
+    pgf_lines.append(r"\addplot[gray, thick, dashed, forget plot, domain=0:2, samples=2] coordinates {")
+    pgf_lines.append(f"    (70\%, {vf(baseline, metric):.2f})")
+    pgf_lines.append(f"    (90\%, {vf(baseline, metric):.2f})")
+    pgf_lines.append(r"};")
+    pgf_lines.append(r"\node[gray, font=\tiny, anchor=south west] at (axis cs:90\%, " + f"{vf(baseline, metric):.2f}" + r") {Baseline};")
+
     # Squeezed Attn bars
-    if idx == 0:
-        pgf_lines.append(r"\addplot[fill=blue!60, draw=black] coordinates {")
-    else:
-        pgf_lines.append(r"\addplot[fill=blue!60, draw=black, forget plot] coordinates {")
-    pgf_lines.append(f"    (Baseline, {vf(baseline, metric):.2f})")
+    pgf_lines.append(r"\addplot[color=blue!70!black, mark=*, thick, nodes near coords, every node near coord/.append style={font=\tiny, anchor=south}] coordinates {")
     for perc, label in zip(percs, perc_labels):
         lab_tex = label.replace("%", r"\%")
         pgf_lines.append(f"    ({lab_tex}, {vf(sq_results[perc], metric):.2f})")
     pgf_lines.append(r"};")
 
     # Value-Aware bars
-    if idx == 0:
-        pgf_lines.append(r"\addplot[fill=red!60, draw=black, postaction={pattern=north east lines}] coordinates {")
-    else:
-        pgf_lines.append(r"\addplot[fill=red!60, draw=black, postaction={pattern=north east lines}, forget plot] coordinates {")
-    pgf_lines.append(f"    (Baseline, {vf(baseline, metric):.2f})")
+    pgf_lines.append(r"\addplot[color=red!70!black, mark=square*, thick, nodes near coords, every node near coord/.append style={font=\tiny, anchor=north}] coordinates {")
     for perc, label in zip(percs, perc_labels):
         lab_tex = label.replace("%", r"\%")
         pgf_lines.append(f"    ({lab_tex}, {vf(va_results[perc], metric):.2f})")
     pgf_lines.append(r"};")
 
-    if idx == 0:
-        pgf_lines.append(r"\legend{Squeezed Attn, Value-Aware (Ours)}")
+    pgf_lines.append(r"\legend{Squeezed Attn, Value-Aware (Ours)}")
+    pgf_lines.append(r"\end{axis}")
+    pgf_lines.append(r"\end{tikzpicture}")
+    pgf_lines.append(f"\\caption{{Performance on {metric_tex[metric]}.}}")
+    pgf_lines.append(f"\\label{{fig:results_{metric}}}")
+    pgf_lines.append(r"\end{figure}")
 
-pgf_lines.append("")
-pgf_lines.append(r"\end{groupplot}")
-pgf_lines.append(r"\end{tikzpicture}")
-pgf_lines.append(r"\caption{Performance comparison between Squeezed Attention and Value-Aware Squeezed Attention across compression rates on LongBench Single-Document QA tasks.}")
-pgf_lines.append(r"\label{fig:results_chart}")
-pgf_lines.append(r"\end{figure}")
+    pgf_code = "\n".join(pgf_lines)
+    pgf_path = os.path.join(OUTPUT_DIR, f"results_chart_{metric}.tex")
+    with open(pgf_path, "w", encoding="utf-8") as f:
+        f.write(pgf_code)
+    pgf_paths.append(pgf_path)
 
-pgf_code = "\n".join(pgf_lines)
-
-pgf_path = os.path.join(OUTPUT_DIR, "results_chart.tex")
-with open(pgf_path, "w", encoding="utf-8") as f:
-    f.write(pgf_code)
-print(f"-> Chart LaTeX (pgfplots) saved: {pgf_path}")
+print(f"-> Generated {len(pgf_paths)} individual LaTeX charts.")
 
 # ============================================================
 # TÓM TẮT OUTPUT
@@ -503,10 +491,16 @@ print("TẤT CẢ OUTPUT FILES:")
 print("=" * 60)
 print(f"  1. Bảng kết quả (ảnh) : {table_path}")
 print(f"  2. Bảng kết quả (LaTeX): {tex_path}")
-print(f"  3. Biểu đồ (PNG)      : {chart_path}")
-print(f"  4. Biểu đồ (PDF)      : {chart_pdf}")
-print(f"  5. Biểu đồ (LaTeX)    : {pgf_path}")
-print(f"  6. CSV                 : {csv_path}")
+print(f"  3. CSV summary         : {csv_path}")
+print(f"  4. Biểu đồ riêng (PNG) :")
+for cp in chart_paths:
+    print(f"       - {os.path.basename(cp)}")
+print(f"  5. Biểu đồ riêng (PDF) :")
+for cp in chart_pdfs:
+    print(f"       - {os.path.basename(cp)}")
+print(f"  6. Biểu đồ riêng (TeX) :")
+for cp in pgf_paths:
+    print(f"       - {os.path.basename(cp)}")
 print("=" * 60)
 print("\nDone!")
 

@@ -1,0 +1,47 @@
+% === Yêu cầu package trong preamble ===
+% \usepackage{pgfplots}
+% \usepackage{tikz}
+% \pgfplotsset{compat=1.18}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=6cm,
+    height=5.5cm,
+    title={Qasper},
+    ylabel={F1 Score},
+    xlabel={Compression Rate},
+    enlarge x limits=0.1,
+    ylabel style={font=\small},
+    xlabel style={font=\small},
+    tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, at={(0.98,0.98)}, anchor=north east},
+    grid=major,
+    grid style={dashed, gray!30},
+    symbolic x coords={70\%, 80\%, 90\%},
+    xtick=data,
+    ymin=4.2,
+    ymax=36.9,
+]
+\addplot[gray, thick, dashed, forget plot, domain=0:2, samples=2] coordinates {
+    (70\%, 10.30)
+    (90\%, 10.30)
+};
+\node[gray, font=\tiny, anchor=south west] at (axis cs:90\%, 10.30) {Baseline};
+\addplot[color=blue!70!black, mark=*, thick, nodes near coords, every node near coord/.append style={font=\tiny, anchor=south}] coordinates {
+    (70\%, 11.45)
+    (80\%, 11.33)
+    (90\%, 11.07)
+};
+\addplot[color=red!70!black, mark=square*, thick, nodes near coords, every node near coord/.append style={font=\tiny, anchor=north}] coordinates {
+    (70\%, 30.77)
+    (80\%, 30.65)
+    (90\%, 30.64)
+};
+\legend{Squeezed Attn, Value-Aware (Ours)}
+\end{axis}
+\end{tikzpicture}
+\caption{Performance on Qasper.}
+\label{fig:results_qasper}
+\end{figure}
