@@ -132,8 +132,8 @@ def process_dataset(DATASET):
     print(f"Đã chọn mẫu câu số #{best_index} của {DATASET} để vẽ hình.")
 
     # --- VẼ ĐỒ THỊ VĂN BẢN (TEXT IMAGE) BẰNG MATPLOTLIB ---
-    plot_percentiles = ["0.7", "0.8"]
-    fig, axs = plt.subplots(len(plot_percentiles), 2, figsize=(14, 5.0)) # Tăng nhẹ chiều cao để bao hết chữ
+    plot_percentiles = ["0.7", "0.8", "0.9"]
+    fig, axs = plt.subplots(len(plot_percentiles), 2, figsize=(14, 6.0)) # Đủ chiều cao để không bị tràn chữ
     # Rút ngắn tiêu đề Ground Truth nếu quá dài
     display_ans = ans[0] if len(ans[0]) < 100 else ans[0][:100] + "..."
 
@@ -143,9 +143,9 @@ def process_dataset(DATASET):
     for ax in axs.flat:
         ax.set_xticks([])
         ax.set_yticks([])
-        # Tạo màu viền nhẹ
+        # Tắt viền cứng mặc định để vẽ viền động ôm sát chữ
         for spine in ax.spines.values():
-            spine.set_edgecolor('#E0E0E0')
+            spine.set_visible(False)
 
     # Tiêu đề cột
     axs[0, 0].set_title("Original Squeezed Attention", fontsize=14, fontweight='bold', color='#D84315', pad=10)
@@ -157,10 +157,10 @@ def process_dataset(DATASET):
         ax.text(0.98, 0.95, stat_text, ha='right', va='top', fontsize=10, fontweight='bold', color='#424242')
         
         # Thiết lập tọa độ ban đầu
-        char_width = 0.021  # Tỉ lệ chiều rộng 1 ký tự so với khung hình
-        line_height = 0.11  # Thu nhỏ khoảng cách dòng để không bị tràn đáy khung
+        char_width = 0.021  
+        line_height = 0.12  # Trả lại khoảng cách dòng bình thường
         current_x = 0.02
-        current_y = 0.82
+        current_y = 0.80    
         
         for word, color in tokens:
             if word == "\n[...]\n":
@@ -178,6 +178,8 @@ def process_dataset(DATASET):
             # Các token tiếng Anh dùng monospace bình thường
             ax.text(current_x, current_y, word, color=color, family='monospace', fontsize=11, fontweight='bold' if color != '#424242' else 'normal')
             current_x += (len(word) + 1) * char_width # +1 cho khoảng trắng ảo
+            
+        return current_y
 
     for i, perc in enumerate(plot_percentiles):
         # Tiêu đề hàng (Mức nén)
@@ -190,15 +192,28 @@ def process_dataset(DATASET):
         sq_res = evaluate_and_format(all_sq[perc][best_index]['pred'], ans)
         va_res = evaluate_and_format(all_va[perc][best_index]['pred'], ans)
         
-        # Vẽ chữ cho SQ
-        draw_colored_text_monospace(axs[i, 0], sq_res['tokens'], sq_res['hal'], sq_res['mat'])
+        import matplotlib.patches as patches
         
-        # Vẽ chữ cho VA
-        draw_colored_text_monospace(axs[i, 1], va_res['tokens'], va_res['hal'], va_res['mat'])
+        # Lấy tọa độ Y kết thúc của chữ cho SQ và VA
+        y_sq = draw_colored_text_monospace(axs[i, 0], sq_res['tokens'], sq_res['hal'], sq_res['mat'])
+        y_va = draw_colored_text_monospace(axs[i, 1], va_res['tokens'], va_res['hal'], va_res['mat'])
+        
+        # Tìm giới hạn dưới cùng để hai khung bằng nhau nhưng vẫn ít khoảng trắng nhất có thể
+        min_y = min(y_sq, y_va) - 0.05
+        
+        # Vẽ viền ôm khít chữ cho SQ (dùng chung chiều cao min_y)
+        rect_sq = patches.Rectangle((0, min_y), 1.0, 1.0 - min_y, linewidth=1, edgecolor='#E0E0E0', facecolor='none')
+        axs[i, 0].add_patch(rect_sq)
+        
+        # Vẽ viền ôm khít chữ cho VA (dùng chung chiều cao min_y)
+        rect_va = patches.Rectangle((0, min_y), 1.0, 1.0 - min_y, linewidth=1, edgecolor='#E0E0E0', facecolor='none')
+        axs[i, 1].add_patch(rect_va)
+
+
 
     # Bỏ ghi chú học thuật để hình gọn nhất có thể theo yêu cầu
 
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.90, bottom=0.05, hspace=0.1, wspace=0.05)
+    plt.subplots_adjust(left=0.12, right=0.98, top=0.92, bottom=0.02, hspace=0.15, wspace=0.03)
     output_file = f"qualitative_examples_{DATASET}_cropped.png"
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
     plt.close(fig)

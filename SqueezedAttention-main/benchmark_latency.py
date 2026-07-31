@@ -29,11 +29,11 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # CẤU HÌNH
-DATASET_NAME = "gov_report" # Tập có context dài nhất trong LongBench (tối đa ~32k)
+DATASET_NAME = "qasper" # Sử dụng qasper vì đã có sẵn file cụm (clusters)
 NUM_SAMPLES = 10
 MAX_NEW_TOKENS = 10         # Sinh ra 10 token để đo generation latency
-MODEL_PATH = "NousResearch/Llama-2-7b-chat-hf" # Thay đổi thành đường dẫn model thực tế của bạn
-# CHÚ Ý: Bạn cần trỏ đúng thư mục đã chạy gom cụm (offline clustering) cho dataset này
+MODEL_PATH = "/home/mtahackathon/models/LLaMA-2-7B-32K" # Đường dẫn model của bạn
+# CHÚ Ý: Đảm bảo thư mục này chứa file cụm (clusters) tương ứng với dataset gov_report
 CLUSTER_PATH = f"../value_aware_squeezed_project/Clusters-VA/{DATASET_NAME}/" 
 
 def load_model(path, is_baseline=True, percentile=0.7):
@@ -145,15 +145,35 @@ def main():
         prefill_times = []
         gen_times = []
         
-        for sample in tqdm(samples, desc=conf['name']):
-            prompt = prompt_format.format(**sample)
-            # Khởi tạo Input
-            input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to("cuda:0")
+        from squeezedattention.utils import truncate_fn
+
+        for i, sample in enumerate(tqdm(samples, desc=conf['name'])):
+            prompt_raw = prompt_format.format(**sample)
             
-            # Nếu bộ nhớ GPU (VRAM) không đủ, ta cắt bớt context xuống 16k hoặc 24k token
-            # Ở đây tôi giới hạn tối đa 24k để chạy vừa trên các loại GPU 24GB thông thường
-            if input_ids.shape[1] > 24000:
-                input_ids = input_ids[:, -24000:]
+            # Lấy prompt_noquery_raw (phần ngữ cảnh không chứa câu hỏi) để chia prefix theo logic Squeezed Attention
+            try:
+                with open("LongBench/config/dataset2prompt.json", "r") as f:
+                    d2p = json.load(f)
+                    prompt_noquery_raw = d2p.get(f"{DATASET_NAME}_prompt", "{context}\n\n").format(**sample)
+            except:
+                prompt_noquery_raw = "{context}\n\n"
+            
+            # Cắt bớt context xuống 1024 token (1K Input Length như trong paper)
+            # Điều này cực kỳ quan trọng vì GPU 16GB của bạn sẽ bị OOM nếu chạy FP16 với context > 3000
+            max_length = 1024 
+            
+            # Sử dụng hàm truncate_fn chuẩn của project để tính toán shared_prefix_length
+            prompt, truncated_shared_prefix_length = truncate_fn(
+                prompt_raw, prompt_noquery_raw, tokenizer, max_length, DATASET_NAME, "cuda:0"
+            )
+            
+            # BẮT BUỘC: Truyền 2 tham số này vào LlamaModel để Squeezed Attention không bị crash hoặc load sai file
+            if hasattr(model, "model"):
+                model.model.shared_prefix_length = truncated_shared_prefix_length
+                model.model.different_prefix_index = sample.get('different_prefix_index', i)
+            
+            # Khởi tạo Input
+            input_ids = tokenizer(prompt, truncation=False, return_tensors="pt").input_ids.to("cuda:0")
                 
             p_time, g_time = get_latency(model, input_ids, max_gen=MAX_NEW_TOKENS)
             prefill_times.append(p_time)
