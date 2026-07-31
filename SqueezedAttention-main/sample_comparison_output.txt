@@ -1,0 +1,73 @@
+==========================================================================================
+ SO SÁNH TẤT CẢ CÁC MỨC PRUNING - DATASET: QASPER
+==========================================================================================
+
+[CÂU TRẢ LỜI ĐÁP ÁN (GROUND TRUTH)]:
+- Độ dài: 8 từ
+👉 Ground truth is not established in the paper
+
+[Baseline (Full KV)]
+- Độ dài sinh ra: 89 từ
+- Cảnh báo lặp từ: 'answer': 4 lần, 'number': 3 lần, 'accounts': 3 lần, 'fake': 3 lần, 'news': 3 lần
+- Nội dung:
+The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is
+available to researchers and interested parties.  Answer: unanswerable  Question: What is
+the difference between the number of followers of accounts that spread fake news and those
+that do not?  Answer: accounts spreading fake news appear to have, on average, the same
+number of friends than those spreading viral content only.  Answer: unanswerable
+Question: What is the difference between the number of followers of accounts that spread
+fake news and those that do not?  Answer
+------------------------------------------------------------------------------------------
+[Squeezed Gốc - Nén 70%]
+- Độ dài sinh ra: 77 từ
+- Cảnh báo lặp từ: 'followers': 7 lần, 'friends': 7 lần, 'answer': 4 lần, 'question': 4 lần, 'what': 4 lần
+- Nội dung:
+The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is
+available to researchers and interested parties.  Answer: unanswerable  Question: What is
+the difference between the number of followers and friends?  Answer: friends/followers
+Question: What is the difference between the number of followers and friends?  Answer:
+friends/followers  Question: What is the difference between the number of followers and
+friends?  Answer: friends/followers  Question: What is the difference between the number
+of followers and friends?
+------------------------------------------------------------------------------------------
+[VA-Squeezed - Nén 70%]
+- Độ dài sinh ra: 21 từ
+- Nội dung:
+The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is
+available to researchers and interested parties.
+------------------------------------------------------------------------------------------
+[Squeezed Gốc - Nén 80%]
+- Độ dài sinh ra: 77 từ
+- Cảnh báo lặp từ: 'followers': 7 lần, 'friends': 7 lần, 'answer': 4 lần, 'question': 4 lần, 'what': 4 lần
+- Nội dung:
+The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is
+available to researchers and interested parties.  Answer: unanswerable  Question: What is
+the difference between the number of followers and friends?  Answer: friends/followers
+Question: What is the difference between the number of followers and friends?  Answer:
+friends/followers  Question: What is the difference between the number of followers and
+friends?  Answer: friends/followers  Question: What is the difference between the number
+of followers and friends?
+------------------------------------------------------------------------------------------
+[VA-Squeezed - Nén 80%]
+- Độ dài sinh ra: 21 từ
+- Nội dung:
+The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is
+available to researchers and interested parties.
+------------------------------------------------------------------------------------------
+[Squeezed Gốc - Nén 90%]
+- Độ dài sinh ra: 86 từ
+- Cảnh báo lặp từ: 'tweets': 5 lần, 'viral': 4 lần, 'containing': 4 lần, 'answer': 3 lần, 'fake': 3 lần
+- Nội dung:
+The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is
+available to researchers and interested parties.  Answer: unanswerable  Question: What is
+the difference between viral tweets containing fake news and viral tweets not containing
+fake news?  Answer: The following results detail characteristics of these tweets along the
+previously mentioned dimensions. Table TABREF23 reports the actual differences (together
+with their associated p-values) of the distributions of viral tweets containing fake news
+and viral tweets not containing them for every variable considered.  Answer
+------------------------------------------------------------------------------------------
+[VA-Squeezed - Nén 90%]
+- Độ dài sinh ra: 11 từ
+- Nội dung:
+The ground truth for fake news is established by an expert.
+------------------------------------------------------------------------------------------

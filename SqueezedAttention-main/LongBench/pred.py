@@ -69,11 +69,12 @@ def parse_args(args=None):
     parser.add_argument("--percentile_lower", type=float, default=0.7)
     parser.add_argument("--obs_window", type=int, default=100)
     parser.add_argument("--task", type=str, default=None)
+    parser.add_argument("--load_8bit", action="store_true", help="Load model in 8-bit to avoid CPU offloading")
     return parser.parse_args(args)
 
-def get_pred(data, max_length, max_gen, prompt_format, prompt_only_format, dataset, device, model_name, model2path, out_path, config_params):
+def get_pred(data, max_length, max_gen, prompt_format, prompt_only_format, dataset, device, model_name, model2path, out_path, config_params, load_8bit=False):
     # Khởi tạo mô hình một lần duy nhất
-    model, tokenizer = load_model_and_tokenizer(model2path[model_name], model_name, device, config_params)
+    model, tokenizer = load_model_and_tokenizer(model2path[model_name], model_name, device, config_params, load_8bit)
 
     # iterate over longbench dataset
     for json_obj in tqdm(data):
@@ -140,7 +141,7 @@ def seed_everything(seed):
     torch.backends.cudnn.deterministic = True
     torch.cuda.manual_seed_all(seed)
 
-def load_model_and_tokenizer(path, model_name, device, config_params):
+def load_model_and_tokenizer(path, model_name, device, config_params, load_8bit=False):
     if "LLaMA-2-7B-32K" in model_name or "LWM" in model_name or "longchat" in model_name or "TinyLlama" in model_name:
 
         config = LlamaConfig.from_pretrained(path)
@@ -157,19 +158,31 @@ def load_model_and_tokenizer(path, model_name, device, config_params):
         config.percentile_lower        = config_params["percentile_lower"]
         config.obs_window              = config_params["obs_window"]
 
-        print(f"Load {model_name} FP16 (Auto Device Map) | attn={config._attn_implementation}")
+        print(f"Load {model_name} FP16 (Auto Device Map) | attn={config._attn_implementation} | 8-bit: {load_8bit}")
 
-        model = LlamaForCausalLM.from_pretrained(
-            path,
-            config=config,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            max_memory={
-                0: "8GiB",       # Hạ tiếp xuống 8GB để đối phó với Activations siêu lớn
-                "cpu": "20GiB" 
-            },
-            low_cpu_mem_usage=True,
-        )
+        if load_8bit:
+            from transformers import BitsAndBytesConfig
+            quant_config = BitsAndBytesConfig(load_in_8bit=True)
+            model = LlamaForCausalLM.from_pretrained(
+                path,
+                config=config,
+                quantization_config=quant_config,
+                torch_dtype=torch.float16,
+                device_map={"": device},
+                low_cpu_mem_usage=True,
+            )
+        else:
+            model = LlamaForCausalLM.from_pretrained(
+                path,
+                config=config,
+                torch_dtype=torch.float16,
+                device_map="auto",
+                max_memory={
+                    0: "8GiB",       # Hạ tiếp xuống 8GB để đối phó với Activations siêu lớn
+                    "cpu": "20GiB" 
+                },
+                low_cpu_mem_usage=True,
+            )
 
         tokenizer = AutoTokenizer.from_pretrained(path, use_fast=False)
 
@@ -258,5 +271,5 @@ if __name__ == '__main__':
             data_all[i]['different_prefix_index'] = i
 
         # ─── GỌI HÀM TRỰC TIẾP, BỎ ĐA TIẾN TRÌNH ───
-        get_pred(data_all, max_length, max_gen, prompt_format, prompt_only_format, dataset, device, model_name, model2path, out_path, config_params)
+        get_pred(data_all, max_length, max_gen, prompt_format, prompt_only_format, dataset, device, model_name, model2path, out_path, config_params, args.load_8bit)
         # ───────────────────────────────────────────

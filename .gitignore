@@ -6,6 +6,7 @@ Clusters-GPU/
 debug-cluster/
 Clusters-VA/
 Clusters-VA2/
+Clusters-E1/
 # C extensions
 *.so
 

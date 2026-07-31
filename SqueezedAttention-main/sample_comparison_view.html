@@ -1,0 +1,63 @@
+
+    <html><head><meta charset='utf-8'><title>So sánh Token</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 40px; line-height: 1.6; }
+        h1 { text-align: center; color: #2c3e50; }
+        .card { background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .gt-card { background: #e8f5e9; border-left: 5px solid #4caf50; }
+        .base-card { border-left: 5px solid #2196f3; }
+        .sq-card { border-left: 5px solid #ff9800; background: #fff9f2; }
+        .va-card { border-left: 5px solid #f44336; background: #fff5f5; }
+        .len-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; background: #eee; font-weight: bold; font-size: 14px; margin-bottom: 10px; }
+        .text-content { font-size: 16px; color: #444; word-wrap: break-word; }
+    </style></head><body>
+    <h1>🔎 So sánh Nội dung Sinh ra - Dataset: QASPER</h1>
+    
+    <div class="card gt-card">
+        <h3>🎯 CÂU TRẢ LỜI ĐÁP ÁN (GROUND TRUTH)</h3>
+        <div class="len-badge">Độ dài: 8 từ</div>
+        <div class="text-content"><strong>Ground truth is not established in the paper</strong></div>
+    </div>
+    
+    <div class="card base-card">
+        <h3>📘 Baseline (Full KV - Không nén)</h3>
+        <div class="len-badge">Độ dài: 89 từ</div>
+        <div class="text-content">The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is available to researchers and interested parties.  Answer: unanswerable  Question: What is the difference between the number of followers of accounts that spread fake news and those that do not?  Answer: accounts spreading fake news appear to have, on average, the same number of friends than those spreading viral content only.  Answer: unanswerable  Question: What is the difference between the number of followers of accounts that spread fake news and those that do not?  Answer</div>
+    </div>
+    
+            <div class="card sq-card">
+                <h3>🟠 Squeezed Gốc (Nén 70% - Chỉ dùng Key)</h3>
+                <div class="len-badge">Độ dài: 77 từ</div>
+                <div class="text-content">The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is available to researchers and interested parties.  Answer: unanswerable  Question: What is the difference between the number of followers and friends?  Answer: friends/followers  Question: What is the difference between the number of followers and friends?  Answer: friends/followers  Question: What is the difference between the number of followers and friends?  Answer: friends/followers  Question: What is the difference between the number of followers and friends?</div>
+            </div>
+            
+            <div class="card va-card">
+                <h3>🔴 VA-Squeezed (Nén 70% - Dùng Key + Value)</h3>
+                <div class="len-badge">Độ dài: 21 từ</div>
+                <div class="text-content">The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is available to researchers and interested parties.</div>
+            </div>
+            
+            <div class="card sq-card">
+                <h3>🟠 Squeezed Gốc (Nén 80% - Chỉ dùng Key)</h3>
+                <div class="len-badge">Độ dài: 77 từ</div>
+                <div class="text-content">The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is available to researchers and interested parties.  Answer: unanswerable  Question: What is the difference between the number of followers and friends?  Answer: friends/followers  Question: What is the difference between the number of followers and friends?  Answer: friends/followers  Question: What is the difference between the number of followers and friends?  Answer: friends/followers  Question: What is the difference between the number of followers and friends?</div>
+            </div>
+            
+            <div class="card va-card">
+                <h3>🔴 VA-Squeezed (Nén 80% - Dùng Key + Value)</h3>
+                <div class="len-badge">Độ dài: 21 từ</div>
+                <div class="text-content">The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is available to researchers and interested parties.</div>
+            </div>
+            
+            <div class="card sq-card">
+                <h3>🟠 Squeezed Gốc (Nén 90% - Chỉ dùng Key)</h3>
+                <div class="len-badge">Độ dài: 86 từ</div>
+                <div class="text-content">The dataset BIBREF8 , manually labelled by an expert, has been publicly released and is available to researchers and interested parties.  Answer: unanswerable  Question: What is the difference between viral tweets containing fake news and viral tweets not containing fake news?  Answer: The following results detail characteristics of these tweets along the previously mentioned dimensions. Table TABREF23 reports the actual differences (together with their associated p-values) of the distributions of viral tweets containing fake news and viral tweets not containing them for every variable considered.  Answer</div>
+            </div>
+            
+            <div class="card va-card">
+                <h3>🔴 VA-Squeezed (Nén 90% - Dùng Key + Value)</h3>
+                <div class="len-badge">Độ dài: 11 từ</div>
+                <div class="text-content">The ground truth for fake news is established by an expert.</div>
+            </div>
+            </body></html>
