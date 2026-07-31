@@ -97,7 +97,8 @@ def process_dataset(DATASET):
     # --- VẼ BIỂU ĐỒ CỘT (BAR CHART) ---
     # Thay vì 1 hàng 2 cột, ta chỉ vẽ 1 biểu đồ duy nhất
     fig, ax1 = plt.subplots(figsize=(8, 6))
-    fig.suptitle(f'Global Token Generation Analysis (N={len(base_samples)}) - Dataset: {DATASET.upper()}', fontsize=16, fontweight='bold', y=1.0)
+    #fig.suptitle(f'Global Token Generation Analysis (N={len(base_samples)}) - Dataset: {DATASET.upper()}', fontsize=16, fontweight='bold', y=1.0)
+    fig.suptitle(f'Average Autoregressive Repetition (Hallucination)', fontsize=14, fontweight='bold')
 
     x_pos = np.arange(len(PERCENTILES))
     width = 0.35
