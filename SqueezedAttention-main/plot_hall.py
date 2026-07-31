@@ -95,8 +95,9 @@ def process_dataset(DATASET):
         va_match_scores.append(va_m)
 
     # --- VẼ BIỂU ĐỒ CỘT (BAR CHART) ---
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-    fig.suptitle(f'Global Token Generation Analysis (N={len(base_samples)}) - Dataset: {DATASET.upper()}', fontsize=16, fontweight='bold', y=0.98)
+    # Thay vì 1 hàng 2 cột, ta chỉ vẽ 1 biểu đồ duy nhất
+    fig, ax1 = plt.subplots(figsize=(8, 6))
+    fig.suptitle(f'Global Token Generation Analysis (N={len(base_samples)}) - Dataset: {DATASET.upper()}', fontsize=16, fontweight='bold', y=1.0)
 
     x_pos = np.arange(len(PERCENTILES))
     width = 0.35
@@ -111,48 +112,40 @@ def process_dataset(DATASET):
     # Đường Baseline
     ax1.axhline(base_hal, color='#2166AC', linestyle='--', linewidth=2, label='Baseline')
 
-    ax1.set_title('Average Autoregressive Repetition (Hallucination)', fontsize=14, fontweight='bold', pad=15)
+    # ax1.set_title('Average Autoregressive Repetition (Hallucination)', fontsize=14, fontweight='bold', pad=15)
     ax1.set_xlabel('KV Cache Sparsity Rate', fontsize=12)
     ax1.set_ylabel('Avg. Hallucinated Tokens / Sample', fontsize=12)
     ax1.set_xticks(x_pos)
     ax1.set_xticklabels(x_labels, fontsize=12)
-    ax1.legend()
+    
+    # Chỉnh lại legend để nằm hẳn ra ngoài, tránh đè lên cột
+    ax1.legend(loc='center left', bbox_to_anchor=(1.02, 0.5), framealpha=1.0)
+    
     ax1.grid(True, linestyle=':', alpha=0.7)
     ax1.set_axisbelow(True)
 
-    def autolabel(ax, rects):
+    def autolabel_inside(ax, rects):
+        # Đưa label vào bên trong cột (dùng cho Original Squeezed)
         for rect in rects:
             height = rect.get_height()
             ax.annotate(f'{height:.1f}', xy=(rect.get_x() + rect.get_width() / 2, height),
-                        xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontweight='bold')
+                        xytext=(0, -15), textcoords="offset points", ha='center', va='top', fontweight='bold', color='black')
 
-    autolabel(ax1, rects1)
-    autolabel(ax1, rects2)
+    def autolabel_above(ax, rects):
+        # Để label phía trên cột (dùng cho VA-Squeezed)
+        for rect in rects:
+            height = rect.get_height()
+            ax.annotate(f'{height:.1f}', xy=(rect.get_x() + rect.get_width() / 2, height),
+                        xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontweight='bold', color='black')
 
-    # Biểu đồ 2: Số từ khóa Trúng đích
-    rects3 = ax2.bar(x_pos - width/2, sq_match_scores, width, label='Original Squeezed', color=COLOR_SQ, edgecolor='black')
-    rects4 = ax2.bar(x_pos + width/2, va_match_scores, width, label='VA-Squeezed', color=COLOR_VA, edgecolor='black')
+    autolabel_inside(ax1, rects1)
+    autolabel_above(ax1, rects2)
 
-    ax2.axhline(base_match, color='#2166AC', linestyle='--', linewidth=2, label='Baseline')
+    # Đã xóa phần chữ chú thích (note_text) ở dưới biểu đồ theo ý bạn
 
-    ax2.set_title('Average Ground-Truth Keyword Preservation', fontsize=14, fontweight='bold', pad=15)
-    ax2.set_xlabel('KV Cache Sparsity Rate', fontsize=12)
-    ax2.set_ylabel('Avg. Matched Tokens / Sample', fontsize=12)
-    ax2.set_xticks(x_pos)
-    ax2.set_xticklabels(x_labels, fontsize=12)
-    ax2.legend()
-    ax2.grid(True, linestyle=':', alpha=0.7)
-    ax2.set_axisbelow(True)
-
-    autolabel(ax2, rects3)
-    autolabel(ax2, rects4)
-
-    note_text = "Academic Insight: Lower values in the left chart indicate successful mitigation of infinite hallucination loops.\nHigher values in the right chart demonstrate robust preservation of core semantic anchors."
-    plt.figtext(0.5, 0.02, note_text, ha="center", fontsize=11, bbox={"facecolor":"#e0f7fa", "alpha":0.5, "pad":8, "edgecolor":"gray"})
-
-    plt.tight_layout(rect=[0, 0.08, 1, 0.92])
-    output_file = f"hallucination_analysis_{DATASET}.png"
-    plt.savefig(output_file, dpi=300)
+    plt.tight_layout()
+    output_file = f"hallucination_analysis_{DATASET}_left_only.png"
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
     plt.close(fig) # Đóng figure để giải phóng bộ nhớ
     print(f"Đã xuất biểu đồ Phân tích Hallucination cho {DATASET.upper()} ra file: {output_file}")
 

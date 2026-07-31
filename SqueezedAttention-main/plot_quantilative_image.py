@@ -132,13 +132,12 @@ def process_dataset(DATASET):
     print(f"Đã chọn mẫu câu số #{best_index} của {DATASET} để vẽ hình.")
 
     # --- VẼ ĐỒ THỊ VĂN BẢN (TEXT IMAGE) BẰNG MATPLOTLIB ---
-    fig, axs = plt.subplots(3, 2, figsize=(14, 11))
+    plot_percentiles = ["0.7", "0.8"]
+    fig, axs = plt.subplots(len(plot_percentiles), 2, figsize=(14, 5.0)) # Tăng nhẹ chiều cao để bao hết chữ
     # Rút ngắn tiêu đề Ground Truth nếu quá dài
     display_ans = ans[0] if len(ans[0]) < 100 else ans[0][:100] + "..."
 
-    fig.suptitle(f"Qualitative Analysis: Text Degeneration in Original SQ vs. Robustness of VA-Squeezed\nDataset: {DATASET.upper()}", fontsize=18, fontweight='bold', y=0.96)
-    fig.text(0.5, 0.90, f"Question (Sample #{best_index}) | Ground Truth: \"{display_ans}\"", ha='center', fontsize=12, color='#1976D2', fontweight='bold')
-    fig.text(0.5, 0.88, "Red: Autoregressive Repetition (Hallucinated) | Green: Ground Truth Match", ha='center', fontsize=11, fontstyle='italic', color='#424242')
+    # Đã xóa toàn bộ các dòng fig.suptitle và fig.text tạo ra tiêu đề ở trên cùng
 
     # Cấu hình lưới
     for ax in axs.flat:
@@ -159,9 +158,9 @@ def process_dataset(DATASET):
         
         # Thiết lập tọa độ ban đầu
         char_width = 0.021  # Tỉ lệ chiều rộng 1 ký tự so với khung hình
-        line_height = 0.08  # Tỉ lệ chiều cao 1 dòng
+        line_height = 0.11  # Thu nhỏ khoảng cách dòng để không bị tràn đáy khung
         current_x = 0.02
-        current_y = 0.85
+        current_y = 0.82
         
         for word, color in tokens:
             if word == "\n[...]\n":
@@ -180,7 +179,7 @@ def process_dataset(DATASET):
             ax.text(current_x, current_y, word, color=color, family='monospace', fontsize=11, fontweight='bold' if color != '#424242' else 'normal')
             current_x += (len(word) + 1) * char_width # +1 cho khoảng trắng ảo
 
-    for i, perc in enumerate(PERCENTILES):
+    for i, perc in enumerate(plot_percentiles):
         # Tiêu đề hàng (Mức nén)
         axs[i, 0].set_ylabel(f"Sparsity\n{int(float(perc)*100)}%", fontsize=13, fontweight='bold', color='#424242', rotation=0, labelpad=40, va='center')
         
@@ -197,15 +196,33 @@ def process_dataset(DATASET):
         # Vẽ chữ cho VA
         draw_colored_text_monospace(axs[i, 1], va_res['tokens'], va_res['hal'], va_res['mat'])
 
-    # Ghi chú học thuật dưới cùng
-    note = "Academic Insight: The Original SQ (left) exhibits severe autoregressive degeneration (red) at high sparsity levels.\nThe proposed VA-Squeezed (right) successfully mitigates hallucination while preserving semantic matching (green)."
-    plt.figtext(0.5, 0.02, note, ha="center", fontsize=11, bbox={"facecolor":"#E8F5E9", "alpha":0.8, "pad":8, "edgecolor":"#81C784"})
+    # Bỏ ghi chú học thuật để hình gọn nhất có thể theo yêu cầu
 
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.84, bottom=0.08, hspace=0.1, wspace=0.05)
-    output_file = f"qualitative_examples_{DATASET}.png"
-    plt.savefig(output_file, dpi=300)
+    plt.subplots_adjust(left=0.15, right=0.95, top=0.90, bottom=0.05, hspace=0.1, wspace=0.05)
+    output_file = f"qualitative_examples_{DATASET}_cropped.png"
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
     plt.close(fig)
     print(f"Đã xuất Ảnh Phân tích Định tính cho {DATASET.upper()} ra file: {output_file}")
+    
+    # --- XUẤT THÊM DẠNG VĂN BẢN (MARKDOWN) ĐỂ COPY-PASTE ---
+    md_content = f"# Qualitative Analysis Raw Text - Dataset: {DATASET.upper()}\n\n"
+    md_content += f"**Question & Ground Truth:** {ans[0]}\n\n"
+    
+    for perc in PERCENTILES:
+        md_content += f"## Sparsity {int(float(perc)*100)}%\n\n"
+        
+        # Lấy text thô (raw text)
+        sq_text = all_sq[perc][best_index]['pred']
+        va_text = all_va[perc][best_index]['pred']
+        
+        md_content += f"### Original Squeezed Attention:\n> {sq_text}\n\n"
+        md_content += f"### VA-Squeezed (Proposed):\n> {va_text}\n\n"
+        md_content += "---\n\n"
+        
+    md_file = f"qualitative_examples_{DATASET}.md"
+    with open(md_file, "w", encoding="utf-8") as f:
+        f.write(md_content)
+    print(f"Đã xuất định dạng Văn bản cho {DATASET.upper()} ra file: {md_file}")
 
 # Chạy cho tất cả các tập dữ liệu
 for dataset in DATASETS:
