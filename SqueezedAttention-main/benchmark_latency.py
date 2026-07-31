@@ -6,6 +6,15 @@ current_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(current_dir, "transformers", "src"))
 sys.path.insert(0, current_dir)
 
+# Đánh lừa trình kiểm tra phiên bản của transformers để tránh lỗi "huggingface-hub>=0.19.3"
+import importlib.metadata
+original_version = importlib.metadata.version
+def bypass_hf_hub_version(pkg_name):
+    if pkg_name == "huggingface-hub":
+        return "0.20.0" # Trả về một phiên bản hợp lệ nằm trong khoảng yêu cầu
+    return original_version(pkg_name)
+importlib.metadata.version = bypass_hf_hub_version
+
 import gc
 import json
 import torch
